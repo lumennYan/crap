@@ -44,20 +44,21 @@ class Drone:
             print('t',t)
             F = self.getF(self.neighbors)
 
-            tree = ( ( bt.toofar(self.position_x,self.position_y,self.neighbors) >> 
-                      (bt.notnear(self.position_x,self.position_y,self.neighbors_path,R)>>
-                       (bt.close(self.position_x,self.position_y,self.neighbors,test.goal)>>
-                        bt.slow(self.acc_total,self.acc_tracking,acc_swarm = self.cluster(F,position,path)))))|bt.go(self.acc_total,acc_swarm = self.cluster(F,position,path))
-                )
+            if not self.istoofar(self.neighbors):
+                print("not too far")
+                self.acc_total = self.acc_tracking + self.cluster(F,position,path)
+            else:
+                print("too far")
+                if not self.isnearpath(self.neighbors_path,R):
+                    print("not near path")
+                    self.acc_total = self.acc_tracking + self.cluster(F,position,path)
+                else:
+                    print("near path")
+                    if not self.farfromgoal(self.neighbors,test.goal):
+                        print("close to goal")
+                        self.acc_total = -5 + self.cluster(F,position,path)
 
-            bb = tree.blackboard(10)
-            state = bb.tick()
-            print ("state = %s\n" % state)
-            while state == RUNNING:
-                state = bb.tick()
-                print ("state = %s\n" % state)
-            assert state == SUCCESS or state == FAILURE
-
+              
 
 
             print('acc total',self.acc_total)
@@ -112,7 +113,7 @@ class Drone:
         return acc_swarm
 
 
-    #树节点
+    #树节点 #自用
     def istoofar(self,others):
         length = len(others)
         for i in range(length):
@@ -122,18 +123,18 @@ class Drone:
                 return True
             print("not too far")
             return False
-    def notnearpath(self,otherpath,r):
+    def isnearpath(self,otherpath,r):
         for i in range(self.position_x-r,self.position_x+r):
             for j in range(self.position_y-r,self.position_y+r):
                 if (i,j) in otherpath:
-                    return False
-                return True
-    def closetogoal(self,other,goal):
+                    return True
+                return False
+    def farfromgoal(self,other,goal):
         own_dis = math.hypot(self.position_x - goal[0],self.position_y-goal[1])
         oth_dis = math.hypot(other.position_x - goal[0],other.position_y-goal[1])
         if own_dis > oth_dis:
-            return False
-        return True
+            return True
+        return False
 
 
     def going(self):
