@@ -43,20 +43,23 @@ class Drone:
             t = t+1
             print('t',t)
             F = self.getF(self.neighbors)
+            
+            #####run不了的部分
 
-            if not self.istoofar(self.neighbors):
-                print("not too far")
-                self.acc_total = self.acc_tracking + self.cluster(F,position,path)
-            else:
-                print("too far")
-                if not self.isnearpath(self.neighbors_path,R):
-                    print("not near path")
-                    self.acc_total = self.acc_tracking + self.cluster(F,position,path)
-                else:
-                    print("near path")
-                    if not self.farfromgoal(self.neighbors,test.goal):
-                        print("close to goal")
-                        self.acc_total = -5 + self.cluster(F,position,path)
+            tree = ( ( bt.toofar(self.position_x,self.position_y,self.neighbors) >> 
+                      (bt.notnear(self.position_x,self.position_y,self.neighbors_path,R)>>
+                       (bt.close(self.position_x,self.position_y,self.neighbors,test.goal)>>
+                        bt.slow(self.acc_total,self.acc_tracking,acc_swarm = self.cluster(F,position,path)))))|bt.go(self.acc_total,acc_swarm = self.cluster(F,position,path))
+                )
+            bb = tree.blackboard(5)
+            state = bb.tick()
+            print ("state = %s\n" % state)
+            while state == RUNNING:
+                state = bb.tick()
+                print ("state = %s\n" % state)
+            assert state == SUCCESS or state == FAILURE
+            ##########
+          
 
               
 
