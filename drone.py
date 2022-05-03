@@ -16,15 +16,21 @@ class Drone:
         self.position_x=start[0]
         self.position_y=start[1]
         self.velocity = 0
-        self.acc_tracking = 2
+        self.acc_tracking = 0.5
         self.acc_total = 0
         self.size = 3
         self.neighbors = []
         self.neighbors_path = []
-        self.R = 5
-   
+        self.R = 10
+        self.lost = None
+        self.lost_paths = []
+        self.msg = []
+        self.share = []
+        self.goal = test.goal
+        self.acc_swarm = 0
         #跟随路径
-    def tracking(self,path): 
+
+    def tracking(self,path,share): 
         length = len(path)
         position = np.array([self.position_x,self.position_y,length-1])
         velocity = self.velocity
@@ -33,68 +39,76 @@ class Drone:
         dis = 0
         R = self.R
         position_array = []
+        self.share = share
         while dis < length:
             self.position_x = path[length-1-dis][0]
             self.position_y = path[length-1-dis][1]
+            self.update(self.position_x,self.position_y,self.index,self.share)
             print('position',self.position_x,self.position_y)
+            print('share',self.share)
             position_array.append([self.position_x,self.position_y])
-            print(position_array)
+            print(self.index,position_array)
             position = np.array([self.position_x,self.position_y,length-1-dis])   
             t = t+1
             print('t',t)
-            F = self.getF(self.neighbors)
 
-            tree = ( ( bt.toofar(self.position_x,self.position_y,self.neighbors) >> 
-                      (bt.notnear(self.position_x,self.position_y,self.neighbors_path,R)>>
-                       (bt.close(self.position_x,self.position_y,self.neighbors,test.goal)>>
-                        bt.slow(self.acc_total,self.acc_tracking,acc_swarm = self.cluster(F,position,path)))))|bt.go(self.acc_total,acc_swarm = self.cluster(F,position,path))
-                )
-
-            bb = tree.blackboard(10)
+            F = self.getF(self.share)
+            self.acc_swarm = self.cluster(F,position,path)
+            #####run不了的部分
+            tree = ( ( bt.toofar >> 
+                      (bt.notnear>>
+                       (bt.close>>
+                        bt.slow)))|bt.go)
+            bb = tree.blackboard(self)
             state = bb.tick()
             print ("state = %s\n" % state)
             while state == RUNNING:
                 state = bb.tick()
                 print ("state = %s\n" % state)
             assert state == SUCCESS or state == FAILURE
-
-
-
+            ##########
             print('acc total',self.acc_total)
-            if velocity<2: #最大速度设置
-                velocity = self.acc_total*0.5 + velocity
+            if velocity<=2:
+                velocity = self.acc_total*1 + velocity
+                if velocity<0:
+                    velocity = 0 #最多减到0
             else:
-                pass
-            print('velocity',velocity)
-            dis = velocity*t
+                velocity = 2.0
+            print('velocity',self.index,velocity)
+            dis = velocity*1 + dis
             if np.isnan(dis): #以防dis为空
                 dis = 0
             else:
                 dis = round(dis)
             print('dis',dis)
-
-        
             time.sleep(0.01)
         return position_array
 
         #受力
     def getF(self,others):
         length = len(others)
-        a = 4
+        a = 7
         R = self.R 
-        b = 2
-        m = 0.25
-        n = 0.5
+        b = 3
+        m = 0.05
+        n = 3
         F = np.array([0,0])
         for i in range(length):
-            d = math.hypot(self.position_x - others[i].position_x, self.position_y - others[i].position_y)
-            if d >= a and d <= R: #引力场
-                f = -m*np.array([self.position_x - others[i].position_x, self.position_y - others[i].position_y])
-            elif d <= b: #斥力
-                f = n*(1/d - 1/b)/pow(d,3)*np.array([self.position_x - others[i].position_x, self.position_y - others[i].position_y])
-            else:#没力
-                f = np.array([0,0])
-            F = F + f
+            if i == self.index:
+                pass
+            else:
+                d = math.hypot(self.position_x - others[i][0], self.position_y - others[i][1])
+                print('d',d)
+                if d != 0:
+                    if d >= a and d <= R: #引力场
+                        f = -m*np.array([self.position_x - others[i][0], self.position_y - others[i][1]])
+                    elif d <= b: #斥力
+                        f = n*(1/d - 1/b)/pow(d,3)*np.array([self.position_x - others[i][0], self.position_y - others[i][1]])
+                    else:#没力
+                        f = np.array([0,0])
+                    F = F + f
+                else:
+                    pass
         print('F',F)
         return F
 
@@ -111,35 +125,50 @@ class Drone:
         print('acc swarm',acc_swarm)
         return acc_swarm
 
+        #找迷路朋友的路
+    def get_lostpaths(self,neighbors_paths,index):
+        aths = []
+        for i in range(len(neighbors_paths)):
+            if i == index:
+                paths = neighbors_paths[i]
+        return paths
 
-    #树节点
+        #更新全局变量
+    def update(self,x,y,index,share):
+        for i in range(len(share)):
+            if i == index:
+                share[i] = [x,y]
+            else:
+                pass
+
+    #树节点 #自用
     def istoofar(self,others):
         length = len(others)
         for i in range(length):
-            d = math.hypot(self.position_x - others[i].position_x, self.position_y - others[i].position_y)
-            if d > self.R:
-                print("too far")
-                return True
-            print("not too far")
-            return False
-    def notnearpath(self,otherpath,r):
+            if i ==self.index:
+                pass
+            else:
+                d = math.hypot(self.position_x - others[i][0], self.position_y - others[i][1])
+                if d > self.R:
+                    print("too far")
+                    self.lost = i
+                    return True
+                print("not too far")
+                return False
+
+    def isnearpath(self,otherpath,r):
         for i in range(self.position_x-r,self.position_x+r):
             for j in range(self.position_y-r,self.position_y+r):
                 if (i,j) in otherpath:
-                    return False
-                return True
-    def closetogoal(self,other,goal):
+                    return True
+                return False
+
+    def farfromgoal(self,other,goal):
         own_dis = math.hypot(self.position_x - goal[0],self.position_y-goal[1])
-        oth_dis = math.hypot(other.position_x - goal[0],other.position_y-goal[1])
+        oth_dis = math.hypot(other[0] - goal[0],other[1]-goal[1])
+        print('own_dis',own_dis)
+        print('oth_dis',oth_dis)
         if own_dis > oth_dis:
-            return False
-        return True
-
-
-    def going(self):
-        self.acc_total = self.acc_tracking + self.cluster(F,position,path)
-
-
-    def slow(self):
-        self.acc_total = -2 + self.cluster(F,position,path)
+            return True
+        return False
 
