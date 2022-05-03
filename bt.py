@@ -15,6 +15,7 @@ def toofar(obj):
     for i in range(length):
         d = math.hypot(x - others[i][0], y - others[i][1])
         if d > R:
+            obj.lost = i
             print("too far")
             return True
         print("not too far")
@@ -29,19 +30,23 @@ def notnear(obj):
     for i in range(x-r,x+r):
             for j in range(y-r,y+r):
                 if (i,j) in otherpath:
+                    print('near path')
                     return False
+                print('not near path')
                 return True
 
 @condition
 def close(obj):
     x = obj.position_x
     y = obj.position_y
-    others = obj.share[obj.lost]
+    other = obj.share[obj.lost]
     goal = obj.goal
     own_dis = math.hypot(x - goal[0],y-goal[1])
-    oth_dis = math.hypot(other.position_x - goal[0],other.position_y-goal[1])
+    oth_dis = math.hypot(other[0] - goal[0],other[1]-goal[1])
     if own_dis > oth_dis:
+        print('far from goal')
         return False
+    print('close to goal')
     return True
 
 @action
@@ -50,4 +55,4 @@ def go(obj):
 
 @action
 def slow(obj):
-    obj.acc_total = -5 + obj.acc_swarm
+    obj.acc_total = -0.5 + obj.acc_swarm

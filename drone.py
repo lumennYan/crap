@@ -39,11 +39,11 @@ class Drone:
         dis = 0
         R = self.R
         position_array = []
-        self.share = share
         while dis < length:
             self.position_x = path[length-1-dis][0]
             self.position_y = path[length-1-dis][1]
-            self.update(self.position_x,self.position_y,self.index,self.share)
+            self.update(self.position_x,self.position_y,self.index,share)
+            self.share = share
             print('position',self.position_x,self.position_y)
             print('share',self.share)
             position_array.append([self.position_x,self.position_y])
@@ -54,19 +54,13 @@ class Drone:
 
             F = self.getF(self.share)
             self.acc_swarm = self.cluster(F,position,path)
-            #####run不了的部分
-            tree = ( ( bt.toofar >> 
-                      (bt.notnear>>
-                       (bt.close>>
-                        bt.slow)))|bt.go)
+
+            #####行为树
+            tree = ( ( bt.toofar >> bt.notnear >> bt.close>> bt.slow)|bt.go)
             bb = tree.blackboard(self)
             state = bb.tick()
-            print ("state = %s\n" % state)
-            while state == RUNNING:
-                state = bb.tick()
-                print ("state = %s\n" % state)
-            assert state == SUCCESS or state == FAILURE
             ##########
+
             print('acc total',self.acc_total)
             if velocity<=2:
                 velocity = self.acc_total*1 + velocity
@@ -171,4 +165,5 @@ class Drone:
         if own_dis > oth_dis:
             return True
         return False
+
 
