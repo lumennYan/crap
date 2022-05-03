@@ -8,12 +8,11 @@ from behave import condition, action, FAILURE
 from behave import repeat, forever, succeeder, failer
 from behave import SUCCESS, FAILURE, RUNNING, BehaveException, \
                    action, condition
-
+goal = (70,70)
 def set_everything():
     start1 = (10, 7)
-    goal = (70,70)
-    start2 = (8,5)
-    start3 = (8,9)
+    start2 = (6,3)
+    start3 = (6,10)
     start = [start1,start2,start3]
     drone1 = drone.Drone(start1,0)
     drone2 = drone.Drone(start2,1)
@@ -37,17 +36,35 @@ def set_everything():
     print(path3)
     global uav_paths
     uav_paths = [path1,path2,path3]
+
     drone1.neighbors_path = get_otherpaths(drone1.index)
     drone2.neighbors_path = get_otherpaths(drone2.index)
     drone3.neighbors_path = get_otherpaths(drone3.index)
+
+    #drone1.lost_paths = get_lostpaths(drone1.neighbors_path,drone1.lost)
+    #drone2.lost_paths = get_lostpaths(drone2.neighbors_path,drone2.lost)   drone里面有相应功能了捏
+    #drone3.lost_paths = get_lostpaths(drone3.neighbors_path,drone3.lost)
     print("done")
 
+    manager = multiprocessing.Manager()
+    share = manager.list()
+
+    share.append(start1)
+    share.append(start2)
+    share.append(start3)
+
     with multiprocessing.Pool(processes=3) as pool:
-        way1 = pool.apply_async(drone1.tracking, args=(path1, ))
+        way1 = pool.apply_async(drone1.tracking, args=(path1,share ))
+
+        way2 = pool.apply_async(drone2.tracking, args=(path2,share ))
+
+        way3 = pool.apply_async(drone3.tracking, args=(path3,share ))
+       
+        pool.close()
+        pool.join()
+
         way1_list = way1.get()
-        way2 = pool.apply_async(drone2.tracking, args=(path2, ))
         way2_list = way2.get()
-        way3 = pool.apply_async(drone3.tracking, args=(path3, ))
         way3_list = way3.get()
 
     print(way1_list)
@@ -75,3 +92,4 @@ def get_otherpaths(index):
         else:
             paths.append(uav_paths[i])
     return paths
+
