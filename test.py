@@ -2,76 +2,67 @@ from astar import AStar
 import drone
 import multiprocessing
 import plotting, env
+import time
 
 
-from behave import condition, action, FAILURE
-from behave import repeat, forever, succeeder, failer
-from behave import SUCCESS, FAILURE, RUNNING, BehaveException, \
-                   action, condition
-goal = (70,70)
+goal = (280,280)
 def set_everything():
-    start1 = (10, 7)
-    start2 = (6,3)
-    start3 = (6,10)
-    start = [start1,start2,start3]
-    drone1 = drone.Drone(start1,0)
-    drone2 = drone.Drone(start2,1)
-    drone3 = drone.Drone(start3,2)
+    start = []
+    start.append((10,7))
+    start.append((8,4))
+    start.append((8,10))
+    start.append((6,7))
+    start.append((2,7))
+    start.append((8,12))
+    start.append((10,12))
+    start.append((6,12))
+    #start.append((2,12))
+    #start.append((2,4))
+    #start.append((10,4))
+    #start.append((6,4))
     global uav_series
-    uav_series = [drone1,drone2,drone3]
-    drone1.neighbors = get_neighbors(drone1.index)
-    drone2.neighbors = get_neighbors(drone2.index)
-    drone3.neighbors = get_neighbors(drone3.index)
-
-    astar1 = AStar(start1, goal, "euclidean")
-    astar2 = AStar(start2, goal, "euclidean")
-    astar3 = AStar(start3, goal, "euclidean")
-
-
-    path1, visited = astar1.searching()
-    path2, visited2= astar2.searching()
-    path3, visited3= astar3.searching()
-    print(path1)
-    print(path2)
-    print(path3)
+    uav_series = []
+    for i in range(8):
+        uav_series.append(drone.Drone(start[i],i))
+    astar = []
+    visited = []
     global uav_paths
-    uav_paths = [path1,path2,path3]
+    uav_paths = []
+    for i in range(8):
+        uav_series[i].neighbors = get_neighbors(uav_series[i].index) 
+        astar.append(AStar(start[i], goal, "euclidean"))
+        path__,visited__ = astar[i].searching()
+        uav_paths.append(path__)
+        print(uav_paths[i])
+        uav_series[i].neighbors_path = get_otherpaths(uav_series[i].index)
 
-    drone1.neighbors_path = get_otherpaths(drone1.index)
-    drone2.neighbors_path = get_otherpaths(drone2.index)
-    drone3.neighbors_path = get_otherpaths(drone3.index)
-
-    #drone1.lost_paths = get_lostpaths(drone1.neighbors_path,drone1.lost)
-    #drone2.lost_paths = get_lostpaths(drone2.neighbors_path,drone2.lost)   drone里面有相应功能了捏
-    #drone3.lost_paths = get_lostpaths(drone3.neighbors_path,drone3.lost)
     print("done")
 
     manager = multiprocessing.Manager()
     share = manager.list()
+    for i in range(8):
+        share.append(start[i])
+             
+    start_time = time.time()
+    print(start_time)
+    way = []
+    way_list = []
+    with multiprocessing.Pool(processes=8) as pool:
+        for i in range(8):
+             way.append(pool.apply_async(uav_series[i].tracking, args=(uav_paths[i],share)))
 
-    share.append(start1)
-    share.append(start2)
-    share.append(start3)
-
-    with multiprocessing.Pool(processes=3) as pool:
-        way1 = pool.apply_async(drone1.tracking, args=(path1,share ))
-
-        way2 = pool.apply_async(drone2.tracking, args=(path2,share ))
-
-        way3 = pool.apply_async(drone3.tracking, args=(path3,share ))
-       
         pool.close()
         pool.join()
+    for i in range(8):
+        way_list.append(way[i].get())
 
-        way1_list = way1.get()
-        way2_list = way2.get()
-        way3_list = way3.get()
-
-    print(way1_list)
-    print(way2_list)
-    print(way3_list)
+    end_time = time.time()
+    print(end_time)
+    print('running_time',end_time-start_time)
+    for i in range(8):
+        print(way_list[i])
     plot = plotting.Plotting(start, goal)
-    plot.animation(way1_list,way2_list,way3_list,"testing")
+    plot.animation(way_list,"testing")
 
         #找朋友
 def get_neighbors(index):

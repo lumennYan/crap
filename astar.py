@@ -157,12 +157,15 @@ class AStar:
 
             if s1 in self.obs or s2 in self.obs:
                 return True
-        for s_n in self.get_neighbor(s_start):
-            if s_n in self.obs:
-                return True
-        for s_n in self.get_neighbor(s_end):
-            if s_n in self.obs:
-                return True
+
+        #for i in range(s_start[0]-10,s_start[0]+10): 
+            #for j in range(s_start[1]-10,s_start[1]+10):
+               # if (i,j) in self.obs:
+                    #return True
+        for i in range(s_end[0]-4,s_end[0]+4):#和障碍物保持5格距离
+            for j in range(s_end[1]-4,s_end[1]+4):
+                if (i,j) in self.obs:
+                    return True
         return False
 
     def f_value(self, s):

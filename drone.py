@@ -4,7 +4,7 @@ import test
 import sys
 import time
 import bt
-
+import matplotlib.pyplot as plt
 from behave import condition, action, FAILURE
 from behave import repeat, forever, succeeder, failer
 from behave import SUCCESS, FAILURE, RUNNING, BehaveException, \
@@ -36,9 +36,11 @@ class Drone:
         velocity = self.velocity
         velocity = 0
         t=0
+        ttt = 0
         dis = 0
         R = self.R
         position_array = []
+        iscollision = []
         while dis < length:
             self.position_x = path[length-1-dis][0]
             self.position_y = path[length-1-dis][1]
@@ -46,6 +48,12 @@ class Drone:
             self.share = share
             print('position',self.position_x,self.position_y)
             print('share',self.share)
+           
+            if share[0] == share[1] or share[0] == share[2] or share[1] == share[2]:
+                iscollision.append(0)
+            else:
+                iscollision.append(1)
+
             position_array.append([self.position_x,self.position_y])
             print(self.index,position_array)
             position = np.array([self.position_x,self.position_y,length-1-dis])   
@@ -60,14 +68,14 @@ class Drone:
             bb = tree.blackboard(self)
             state = bb.tick()
             ##########
-
+ 
             print('acc total',self.acc_total)
-            if velocity<=2:
+            if velocity<6.0:
                 velocity = self.acc_total*1 + velocity
-                if velocity<0:
-                    velocity = 0 #最多减到0
+                if velocity<=-6.0:
+                   velocity = -6.0 #最多减到-3
             else:
-                velocity = 2.0
+                velocity = 6.0 
             print('velocity',self.index,velocity)
             dis = velocity*1 + dis
             if np.isnan(dis): #以防dis为空
@@ -76,19 +84,33 @@ class Drone:
                 dis = round(dis)
             print('dis',dis)
             time.sleep(0.01)
+
+        print('t',t)
+        x1 = np.linspace(0,t,t)
+        plt.figure()
+        plt.plot(x1,iscollision)
+        plt.title('map2--index_changed  velocity=5.0')
+        plt.xlabel('t',fontsize=14)
+        plt.ylabel('safety',fontsize=14)
+        plt.xlim(0,t)
+        plt.ylim(0,1.1)
+        #plt.show()
+        print('ttt',ttt)
         return position_array
 
         #受力
     def getF(self,others):
         length = len(others)
-        a = 7
+        a = 8
         R = self.R 
-        b = 3
+        b = 4
         m = 0.05
-        n = 3
+        n = 6
         F = np.array([0,0])
         for i in range(length):
             if i == self.index:
+                pass
+            elif (others[i][0],others[i][1]) == self.goal:
                 pass
             else:
                 d = math.hypot(self.position_x - others[i][0], self.position_y - others[i][1])
@@ -103,6 +125,7 @@ class Drone:
                     F = F + f
                 else:
                     pass
+                    
         print('F',F)
         return F
 
@@ -135,7 +158,7 @@ class Drone:
             else:
                 pass
 
-    #树节点 #自用
+        #状态机节点 
     def istoofar(self,others):
         length = len(others)
         for i in range(length):

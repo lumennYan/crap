@@ -55,4 +55,4 @@ def go(obj):
 
 @action
 def slow(obj):
-    obj.acc_total = -0.5 + obj.acc_swarm
+    obj.acc_total = -0.4 + obj.acc_swarm
